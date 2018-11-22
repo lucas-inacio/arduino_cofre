@@ -75,10 +75,20 @@ int abre_cofre()
 // (fechado e com a senha definida - padrão ou da EEPROM)
 byte inicia_cofre(byte *senha)
 {
+  // Configura a saída para operar o motor servo
+  configura_PWM();
+  // Chave para atuar como sensor de abertura do cofre
   pinMode(FIM_DE_CURSO, INPUT_PULLUP);
-  pinMode(SERVO, OUTPUT);
+  int aberto = digitalRead(FIM_DE_CURSO);
+  if (aberto)
+    duty_cycle(ABERTO);
+  else
+    duty_cycle(TRANCADO);
+  attachInterrupt(
+    digitalPinToInterrupt(FIM_DE_CURSO), rotina_isr, RISING);
+  // Lê a senha da EEPROM ou utiliza a senha padrão
   prepara_senha(senha, TAMANHO_SENHA);
-  return (digitalRead(FIM_DE_CURSO)) ? STATUS_ABERTO : STATUS_FECHADO;
+  return (aberto) ? STATUS_ABERTO : STATUS_FECHADO;
 }
 
 // A variável "inicio" indica se a função foi chamada
@@ -92,7 +102,6 @@ void loop_fechado(int inicio)
   {
     prompt(&lcd, "Senha");
     conta_digitados = 0;
-    tentativas = 0;
     prepara_senha(senha_atual, TAMANHO_SENHA);
   }
   char c = le_botao();
@@ -128,6 +137,7 @@ void loop_fechado(int inicio)
         {
           ultimo_instante = millis();
           status_atual = STATUS_PENALIDADE;
+          tentativas = 0;
         }
         else
         {
@@ -259,12 +269,7 @@ void setup() {
   InitLCD(&lcd, 8, 10, 7, 6, 5, 4);
   configura_teclado((char *)CARACTERES, LINHAS,
                     COLUNAS, PORTAS_LINHAS,
-                    PORTAS_COLUNAS);
-  configura_PWM();
-  duty_cycle(TRANCADO);
-  attachInterrupt(
-    digitalPinToInterrupt(FIM_DE_CURSO), rotina_isr, RISING);
-  
+                    PORTAS_COLUNAS);  
   status_atual = inicia_cofre(senha_atual);
 }
 
